@@ -14,16 +14,30 @@
       height: 100vh;
     }
 
-    #channel-select, #chat, #message-input {
+    #top-bar {
+      display: flex;
+      background: #1f1f1f;
       padding: 10px;
+      gap: 10px;
+      align-items: center;
     }
 
     #channel-select {
-      background: #1f1f1f;
+      background: #2a2a2a;
       color: #fff;
       border: none;
-      outline: none;
+      padding: 6px 10px;
       font-size: 14px;
+    }
+
+    .voice-button {
+      background: #333;
+      color: #fff;
+      border: none;
+      padding: 6px 10px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 13px;
     }
 
     #chat {
@@ -76,15 +90,25 @@
       font-style: italic;
       font-size: 13px;
     }
+
+    #audio-container {
+      display: none; /* hidden container for peer audio streams */
+    }
   </style>
 </head>
 <body>
 
-  <select id="channel-select">
-    <option value="general">#general</option>
-    <option value="random">#random</option>
-    <option value="tech">#tech</option>
-  </select>
+  <div id="top-bar">
+    <select id="channel-select">
+      <option value="general">#general</option>
+      <option value="random">#random</option>
+      <option value="tech">#tech</option>
+      <option value="voice-room-1">🎤 voice-room-1</option>
+      <option value="voice-room-2">🎤 voice-room-2</option>
+    </select>
+    <button class="voice-button" id="join-voice">Join Voice</button>
+    <button class="voice-button" id="leave-voice">Leave Voice</button>
+  </div>
 
   <div id="chat"></div>
 
@@ -92,7 +116,10 @@
     <input type="text" id="input" placeholder="Type a message or /nickname yourname..." autocomplete="off" />
   </div>
 
-<script src="/socket.io/socket.io.js"></script>
-<script src="script.js"></script>
+  <!-- Container for remote peer audio streams -->
+  <div id="audio-container"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>

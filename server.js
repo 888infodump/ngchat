@@ -4,7 +4,6 @@ const http = require('http');
 const server = http.createServer(app);
 const { Server } = require('socket.io');
 const io = new Server(server);
-
 const fs = require('fs');
 const path = require('path');
 
@@ -14,14 +13,18 @@ if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir);
 
 app.use(express.static('public'));
 
-let messageStore = {};
+let channels = {}; // { channelName: [socket.id, ...] }
 
+// ==== Message Logging ====
 function logMessage(channel, entry) {
   const filePath = path.join(logsDir, `${channel}.txt`);
   fs.appendFile(filePath, entry + '\n', () => {});
 }
 
 io.on('connection', (socket) => {
+  console.log('A user connected:', socket.id);
+
+  // ==== Chat: message handling ====
   socket.on('message', ({ nickname, message, channel }) => {
     const timestamp = new Date().toISOString();
     const entry = `[${timestamp}] ${nickname} (${channel}): ${message}`;
@@ -47,9 +50,7 @@ io.on('connection', (socket) => {
             if (match) {
               const [_, time, nickname, ch, msg] = match;
               const isImage = msg === '[Image]';
-              if (isImage) {
-                // Skip actual image body in logs for now
-              } else {
+              if (!isImage) {
                 socket.emit('message', { nickname, message: msg, channel: ch });
               }
             }
@@ -58,8 +59,28 @@ io.on('connection', (socket) => {
       });
     }
   });
+
+  // ==== WebRTC signaling ====
+  socket.on('join', (channel) => {
+    socket.join(channel);
+    socket.to(channel).emit('user-joined', socket.id);
+  });
+
+  socket.on('signal', ({ to, from, signal }) => {
+    io.to(to).emit('signal', { from, signal });
+  });
+
+  socket.on('disconnect', () => {
+    for (const channel in channels) {
+      channels[channel] = channels[channel].filter(id => id !== socket.id);
+      socket.to(channel).emit('user-left', socket.id);
+    }
+    socket.broadcast.emit('user-left', socket.id);
+  });
 });
 
+
+// ==== Server Start ====
 server.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
