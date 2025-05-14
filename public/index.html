@@ -1,83 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Dark Chat</title>
+  <meta charset="UTF-8" />
+  <title>ngchat</title>
   <style>
     body {
-      background-color: #121212;
-      color: #f1f1f1;
-      font-family: 'Segoe UI', sans-serif;
       margin: 0;
-      padding: 20px;
+      font-family: sans-serif;
+      background: #121212;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
-    h2, h3 {
-      margin-top: 0;
-    }
-    input, textarea, button {
-      background-color: #1e1e1e;
-      color: #f1f1f1;
-      border: 1px solid #333;
-      border-radius: 6px;
+
+    #channel-select, #chat, #message-input {
       padding: 10px;
-      width: 100%;
-      box-sizing: border-box;
-      margin: 10px 0;
     }
-    button {
-      cursor: pointer;
-      background-color: #333;
-      transition: background-color 0.2s ease;
+
+    #channel-select {
+      background: #1f1f1f;
+      color: #fff;
+      border: none;
+      outline: none;
+      font-size: 14px;
     }
-    button:hover {
-      background-color: #444;
+
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      border-top: 1px solid #333;
+      border-bottom: 1px solid #333;
+      padding: 15px;
     }
-    #messages {
-      background-color: #1e1e1e;
-      border: 1px solid #333;
-      padding: 10px;
-      height: 300px;
-      overflow-y: scroll;
-      white-space: pre-wrap;
+
+    .message {
+      margin: 8px 0;
+      padding: 6px 10px;
+      background: #1f1f1f;
       border-radius: 6px;
+      max-width: 75%;
+      word-wrap: break-word;
+    }
+
+    .message strong {
+      color: #90caf9;
+    }
+
+    .image {
+      max-width: 200px;
+      display: block;
+      margin-top: 5px;
+      border-radius: 4px;
+      border: 1px solid #444;
+    }
+
+    #message-input {
+      display: flex;
+      background: #1f1f1f;
+      padding: 10px;
+    }
+
+    #input {
+      flex: 1;
+      padding: 10px;
+      background: #2a2a2a;
+      border: none;
+      color: white;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    .system-message {
+      color: #aaa;
+      font-style: italic;
+      font-size: 13px;
     }
   </style>
 </head>
 <body>
-  <h2>Dark Chat</h2>
-  <input id="username" placeholder="Username" />
-  <textarea id="message" placeholder="Type your message..."></textarea>
-  <button onclick="sendMessage()">Send</button>
 
-  <h3>Messages</h3>
-  <div id="messages"></div>
+  <select id="channel-select">
+    <option value="general">#general</option>
+    <option value="random">#random</option>
+    <option value="tech">#tech</option>
+  </select>
 
-  <script>
-    async function loadMessages() {
-      const res = await fetch('/api/messages');
-      const messages = await res.json();
-      const output = messages.map(m => `[${m.timestamp}] ${m.username}: ${m.message}`).join('\n');
-      document.getElementById('messages').textContent = output;
-    }
+  <div id="chat"></div>
 
-    async function sendMessage() {
-      const username = document.getElementById('username').value.trim();
-      const message = document.getElementById('message').value.trim();
-      if (!username || !message) return alert('Both fields are required.');
+  <div id="message-input">
+    <input type="text" id="input" placeholder="Type a message or /nickname yourname..." autocomplete="off" />
+  </div>
 
-      await fetch('/api/message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, message })
-      });
-
-      document.getElementById('message').value = '';
-      loadMessages();
-    }
-
-    // Refresh messages every 3 seconds
-    setInterval(loadMessages, 3000);
-    loadMessages();
-  </script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="script.js"></script>
 </body>
 </html>

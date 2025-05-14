@@ -1,49 +1,65 @@
 const express = require('express');
+const app = express();
+const http = require('http');
+const server = http.createServer(app);
+const { Server } = require('socket.io');
+const io = new Server(server);
+
 const fs = require('fs');
 const path = require('path');
 
-const app = express();
 const port = process.env.PORT || 3000;
+const logsDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir);
 
 app.use(express.static('public'));
-app.use(express.json());
 
-const LOG_FILE = path.join(__dirname, 'log.txt');
+let messageStore = {};
 
-// Helper: Append a message to log.txt
-function saveMessage(username, message) {
-  const line = `[${new Date().toISOString()}] ${username}: ${message}\n`;
-  fs.appendFileSync(LOG_FILE, line);
+function logMessage(channel, entry) {
+  const filePath = path.join(logsDir, `${channel}.txt`);
+  fs.appendFile(filePath, entry + '\n', () => {});
 }
 
-// Helper: Read all messages from log.txt
-function readMessages() {
-  if (!fs.existsSync(LOG_FILE)) return [];
-  const lines = fs.readFileSync(LOG_FILE, 'utf8').split('\n').filter(Boolean);
-  return lines.map(line => {
-    const match = line.match(/^\[(.+?)\] (.*?): (.*)$/);
-    if (!match) return null;
-    const [, timestamp, username, message] = match;
-    return { timestamp, username, message };
-  }).filter(Boolean);
-}
+io.on('connection', (socket) => {
+  socket.on('message', ({ nickname, message, channel }) => {
+    const timestamp = new Date().toISOString();
+    const entry = `[${timestamp}] ${nickname} (${channel}): ${message}`;
+    logMessage(channel, entry);
+    io.emit('message', { nickname, message, channel });
+  });
 
-// POST /api/message – Save a message
-app.post('/api/message', (req, res) => {
-  const { username, message } = req.body;
-  if (!username || !message) {
-    return res.status(400).send({ success: false, error: 'Missing username or message' });
-  }
-  saveMessage(username, message);
-  res.status(200).send({ success: true });
+  socket.on('image', ({ nickname, data, channel }) => {
+    const timestamp = new Date().toISOString();
+    const entry = `[${timestamp}] ${nickname} (${channel}): [Image]`;
+    logMessage(channel, entry);
+    io.emit('image', { nickname, data, channel });
+  });
+
+  socket.on('getMessages', (channel) => {
+    const filePath = path.join(logsDir, `${channel}.txt`);
+    if (fs.existsSync(filePath)) {
+      fs.readFile(filePath, 'utf8', (err, data) => {
+        if (!err) {
+          const lines = data.trim().split('\n');
+          for (let line of lines) {
+            const match = line.match(/\[(.*?)\] (.*?) \((.*?)\): (.*)/);
+            if (match) {
+              const [_, time, nickname, ch, msg] = match;
+              const isImage = msg === '[Image]';
+              if (isImage) {
+                // Skip actual image body in logs for now
+              } else {
+                socket.emit('message', { nickname, message: msg, channel: ch });
+              }
+            }
+          }
+        }
+      });
+    }
+  });
 });
 
-// GET /api/messages – Return all messages
-app.get('/api/messages', (req, res) => {
-  const messages = readMessages();
-  res.json(messages);
-});
-
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
